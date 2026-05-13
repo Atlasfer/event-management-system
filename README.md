@@ -336,3 +336,250 @@ Ubiquitous Languages
 | **Command** | An intent to change state (e.g. CreateEventCommand). Handled by a Command Handler in the application layer. | App layer |
 | **Query** | A read-only request for data (e.g. GetAvailableEventsQuery). Handled by a Query Handler; does not change state. | App layer |
 ```
+
+---
+
+* Week 9-10 Progress: Domain Layer & Unit Tests
+
+In weeks 9-10, the entire domain layer was fully implemented, including aggregates, entities, value objects, domain services, domain events, repository interfaces, and unit tests.
+
+Implemented Aggregates
+----------------------
+
+### EventAggregate (`src/domain/event/event.aggregate.ts`)
+
+The aggregate root responsible for managing the full lifecycle of an event and its ticket categories.
+
+**Methods:**
+* `create(props)` — creates a new event with status Draft, raises `EventCreatedEvent`
+* `publish()` — publishes the event, validates via `EventPublishingPolicyService`, raises `EventPublishedEvent`
+* `cancel()` — cancels the event, disables all ticket categories, raises `EventCancelledEvent`
+* `createTicketCategory(props)` — creates a new ticket category, raises `TicketCategoryCreatedEvent`
+* `disableTicketCategory(categoryId)` — disables a ticket category, raises `TicketCategoryDisabledEvent`
+* `getTicketCategories()` — returns a copy of the ticket category list
+
+**Implemented business rules:** BR1, BR2, BR3, BR4, BR5, BR6, BR7, BR9, BR10, BR11, BR12
+
+### BookingAggregate (`src/domain/booking/booking.aggregate.ts`)
+
+The aggregate root responsible for managing ticket bookings, including payment and expiry.
+
+**Methods:**
+* `create(props)` — creates a new booking with status PendingPayment, raises `TicketReserved`
+* `reconstitute(props)` — reconstructs a booking from persistence without raising domain events
+* `pay(amount, now?)` — processes booking payment, raises `BookingPaid`
+* `expire()` — expires the booking, raises `BookingExpired`
+* `markAsRefunded()` — changes the booking status to Refunded
+
+**Implemented business rules:** BR15, BR16, BR18, BR19, BR20, BR21, BR22, BR23
+
+### TicketEntity (`src/domain/ticket/ticket.entity.ts`)
+
+The entity representing a physical ticket issued after a booking is paid.
+
+**Methods:**
+* `create(props)` — creates a new ticket with status Active
+* `reconstitute(props)` — reconstructs a ticket from persistence
+* `checkIn(now?)` — performs ticket check-in, raises `TicketCheckedIn`
+* `cancel()` — cancels the ticket
+* `pullDomainEvents()` — retrieves and clears accumulated domain events
+
+**Implemented business rules:** BR25, BR26
+
+### RefundAggregate (`src/domain/refund/refund.aggregate.ts`)
+
+The aggregate root responsible for managing the refund process for customers.
+
+**Methods:**
+* `create(props)` — creates a new refund request with status Requested, raises `RefundRequested`
+* `reconstitute(props)` — reconstructs a refund from persistence
+* `approve()` — approves the refund, raises `RefundApproved`
+* `reject(rejectionReason)` — rejects the refund, raises `RefundRejected`
+* `markAsPaidOut(paymentReference)` — marks the refund as paid out, raises `RefundPaidOut`
+
+**Implemented business rules:** BR28, BR30, BR31, BR32, BR33, BR34
+
+Implemented Entities
+--------------------
+
+### TicketCategory (`src/domain/event/ticket-category.entity.ts`)
+
+An entity managed within the EventAggregate as part of the `categories` collection.
+
+**Fields:** `id`, `eventId`, `name`, `price` (Money), `quota`, `remainingQuota`, `salesStart`, `salesEnd`, `isActive`
+
+**Methods:**
+* `create(props)` — creates a new ticket category with validation for price, quota, and sales period
+* `disable()` — deactivates the ticket category
+
+Implemented Value Objects
+--------------------------
+
+| Value Object | File | Fields | Validation |
+| :--- | :--- | :--- | :--- |
+| `Money` | `shared/money.vo.ts` | `amount`, `currency` | amount >= 0, currency must not be empty |
+| `EventSchedule` | `event/value-objects.ts` | `start`, `end` | start must be before end |
+| `EventCapacity` | `event/value-objects.ts` | `capacity` | capacity > 0 |
+| `PaymentDeadline` | `booking/value-objects.ts` | `value: Date` | — |
+| `TicketCode` | `ticket/value-objects.ts` | `value: string` | must not be empty |
+| `BookingId` | `booking/value-objects.ts` | `value: string` | must not be empty |
+| `TicketId` | `ticket/value-objects.ts` | `value: string` | must not be empty |
+| `RefundId` | `refund/value-objects.ts` | `value: string` | must not be empty |
+
+Implemented Domain Services
+----------------------------
+
+### EventPublishingPolicyService (`src/domain/event/event-publishing-policy.service.ts`)
+
+A domain service that validates whether an event is eligible to be published.
+
+**Validations:**
+* The event must have at least one active ticket category (BR4)
+* The total quota of all ticket categories must not exceed the event capacity (BR5)
+
+### RefundEligibilityService (`src/domain/refund-eligibility.service.ts`)
+
+A domain service that determines whether a booking is eligible for a refund request.
+
+**Validations:**
+* The booking must have status Paid (BR28)
+* If the event is cancelled, the refund is immediately allowed without further checks (BR29)
+* The request must be submitted before the refund deadline (BR28)
+* None of the tickets from the booking may have already been checked in (BR28)
+
+### TicketCheckInPolicyService (`src/domain/ticket-check-in-policy.service.ts`)
+
+A domain service that determines whether a ticket may be checked in by a gate officer.
+
+**Validations:**
+* The event must not have status Cancelled (US14)
+* The ticket must belong to the same event as the targetEventId (BR25, US14)
+* The ticket must not already have status CheckedIn (BR26, US14)
+* The ticket must have status Active (BR25)
+* The check-in time must fall within the allowed window on the event day (BR25)
+
+Implemented Domain Events
+--------------------------
+
+All domain events implement the `DomainEvent` interface with fields `eventName` and `occurredAt`.
+
+| Domain Event | File | Raised By | Triggered When |
+| :--- | :--- | :--- | :--- |
+| `EventCreatedEvent` | `event/event-created.event.ts` | `EventAggregate.create()` | A new event is successfully created |
+| `EventPublishedEvent` | `event/event-published.event.ts` | `EventAggregate.publish()` | An event is successfully published |
+| `EventCancelledEvent` | `event/event-cancelled.event.ts` | `EventAggregate.cancel()` | An event is successfully cancelled |
+| `TicketCategoryCreatedEvent` | `event/ticket-category-created.event.ts` | `EventAggregate.createTicketCategory()` | A new ticket category is created |
+| `TicketCategoryDisabledEvent` | `event/ticket-category-disabled.event.ts` | `EventAggregate.disableTicketCategory()` | A ticket category is disabled |
+| `TicketReserved` | `booking/events.ts` | `BookingAggregate.create()` | A new booking is successfully created |
+| `BookingPaid` | `booking/events.ts` | `BookingAggregate.pay()` | A booking is successfully paid |
+| `BookingExpired` | `booking/events.ts` | `BookingAggregate.expire()` | A booking expires due to a missed payment deadline |
+| `TicketCheckedIn` | `ticket/events.ts` | `TicketEntity.checkIn()` | A ticket is successfully checked in |
+| `RefundRequested` | `refund/events.ts` | `RefundAggregate.create()` | A new refund is requested |
+| `RefundApproved` | `refund/events.ts` | `RefundAggregate.approve()` | A refund is approved |
+| `RefundRejected` | `refund/events.ts` | `RefundAggregate.reject()` | A refund is rejected |
+| `RefundPaidOut` | `refund/events.ts` | `RefundAggregate.markAsPaidOut()` | A refund has been paid out |
+
+Implemented Repository Interfaces
+-----------------------------------
+
+Repository interfaces are defined in the domain layer and implemented in the infrastructure layer using Prisma.
+
+### IEventRepository (`src/domain/event/event.repository.ts`)
+
+```typescript
+findById(id: string): Promise<EventAggregate | null>
+findPublished(): Promise<EventAggregate[]>
+save(event: EventAggregate): Promise<void>
+```
+
+### IBookingRepository (`src/domain/booking/booking.repository.ts`)
+
+```typescript
+save(booking: BookingAggregate): Promise<void>
+findById(id: string): Promise<BookingAggregate | null>
+findByCustomerAndEvent(customerId: string, eventId: string): Promise<BookingAggregate[]>
+findByStatus(status: BookingStatus): Promise<BookingAggregate[]>
+findByEventId(eventId: string): Promise<BookingAggregate[]>
+delete(id: string): Promise<void>
+```
+
+### ITicketRepository (`src/domain/ticket/ticket.repository.ts`)
+
+```typescript
+save(ticket: TicketEntity): Promise<void>
+saveMany(tickets: TicketEntity[]): Promise<void>
+findById(id: string): Promise<TicketEntity | null>
+findByCode(code: TicketCode): Promise<TicketEntity | null>
+findByBookingId(bookingId: string): Promise<TicketEntity[]>
+findByStatus(status: TicketStatus): Promise<TicketEntity[]>
+```
+
+### IRefundRepository (`src/domain/refund/refund.repository.ts`)
+
+```typescript
+save(refund: RefundAggregate): Promise<void>
+findById(id: string): Promise<RefundAggregate | null>
+findByBookingId(bookingId: string): Promise<RefundAggregate | null>
+findByStatus(status: RefundStatus): Promise<RefundAggregate[]>
+findByCustomerId(customerId: string): Promise<RefundAggregate[]>
+```
+
+Unit Test Results
+-----------------
+
+All unit tests are located in `src/domain/domain.spec.ts`. Run them with `npx jest`.
+
+| # | Test Case | Business Rule | Result |
+| :--- | :--- | :--- | :--- |
+| 1 | Booking cannot be created with zero quantity | BR16 | PASS |
+| 2 | Booking cannot be created with negative quantity | BR16 | PASS |
+| 3 | Booking should succeed when quantity is positive | BR16 | PASS |
+| 4 | Booking cannot be paid after payment deadline | BR20 | PASS |
+| 5 | Error message mentions "payment deadline has passed" | BR20 | PASS |
+| 6 | Booking cannot be paid with amount less than total price | BR19 | PASS |
+| 7 | Booking cannot be paid with amount more than total price | BR19 | PASS |
+| 8 | Booking should succeed when payment amount equals total price | BR19 | PASS |
+| 9 | Paid booking cannot be marked as expired | BR21 | PASS |
+| 10 | Error message mentions "paid booking cannot be marked as expired" | BR21 | PASS |
+| 11 | PendingPayment booking can be expired successfully | BR21 | PASS |
+| 12 | Checked-in ticket cannot be checked in again | BR26 | PASS |
+| 13 | Error message mentions "already been used" | BR26 | PASS |
+| 14 | Active ticket can be checked in successfully | BR26 | PASS |
+| 15 | Refund cannot be requested if any ticket is already checked in | BR28 | PASS |
+| 16 | Error message mentions "checked in" | BR28 | PASS |
+| 17 | Refund succeeds when all tickets are Active and booking is Paid | BR28 | PASS |
+| 18 | Refund cannot be approved if status is Approved | BR30 | PASS |
+| 19 | Refund cannot be approved if status is Rejected | BR30 | PASS |
+| 20 | Refund cannot be approved if status is PaidOut | BR30 | PASS |
+| 21 | Refund can be approved when status is Requested | BR30 | PASS |
+| 22 | Rejected refund must have a rejection reason (empty string) | BR31 | PASS |
+| 23 | Rejected refund must have a rejection reason (whitespace only) | BR31 | PASS |
+| 24 | Refund cannot be rejected if status is not Requested | BR30 | PASS |
+| 25 | Refund can be rejected with a valid reason | BR31 | PASS |
+
+List of Implemented User Stories
+----------------------------------
+
+| # | User Story | Domain Layer Status |
+| :--- | :--- | :--- |
+| US1 | Create Event | ✅ EventAggregate.create() |
+| US2 | Publish Event | ✅ EventAggregate.publish() |
+| US3 | Cancel Event | ✅ EventAggregate.cancel() |
+| US4 | Create Ticket Category | ✅ EventAggregate.createTicketCategory() |
+| US5 | Disable Ticket Category | ✅ EventAggregate.disableTicketCategory() |
+| US6 | View Available Events | ✅ IEventRepository.findPublished() |
+| US7 | View Event Details | ✅ IEventRepository.findById() |
+| US8 | Create Ticket Booking | ✅ BookingAggregate.create() |
+| US9 | Calculate Booking Total Price | ✅ Money.multiply() in BookingAggregate.create() |
+| US10 | Pay Booking | ✅ BookingAggregate.pay() |
+| US11 | Expire Booking | ✅ BookingAggregate.expire() |
+| US12 | View Purchased Tickets | ✅ ITicketRepository.findByBookingId() |
+| US13 | Check In Ticket | ✅ TicketEntity.checkIn() + TicketCheckInPolicyService |
+| US14 | Reject Invalid Ticket Check-in | ✅ TicketCheckInPolicyService (specific error messages) |
+| US15 | Request Refund | ✅ RefundAggregate.create() + RefundEligibilityService |
+| US16 | Approve Refund | ✅ RefundAggregate.approve() |
+| US17 | Reject Refund | ✅ RefundAggregate.reject() |
+| US18 | Mark Refund as Paid Out | ✅ RefundAggregate.markAsPaidOut() |
+| US19 | View Event Sales Report | 🔧 IBookingRepository.findByEventId() (query handler pending) |
+| US20 | View Event Participants | 🔧 IBookingRepository.findByEventId() (query handler pending) |
+
