@@ -335,21 +335,20 @@ Ubiquitous Languages
 | **Repository** | An abstraction over persistence for a single aggregate; defined as an interface in the domain layer, implemented in infrastructure. | Pattern |
 | **Command** | An intent to change state (e.g. CreateEventCommand). Handled by a Command Handler in the application layer. | App layer |
 | **Query** | A read-only request for data (e.g. GetAvailableEventsQuery). Handled by a Query Handler; does not change state. | App layer |
-```
 
 ---
-
-* Week 9-10 Progress: Domain Layer & Unit Tests
-
+Week 9-10 Progress: Domain Layer & Unit Tests
+=============================================
+ 
 In weeks 9-10, the entire domain layer was fully implemented, including aggregates, entities, value objects, domain services, domain events, repository interfaces, and unit tests.
-
+ 
 Implemented Aggregates
 ----------------------
-
+ 
 ### EventAggregate (`src/domain/event/event.aggregate.ts`)
-
+ 
 The aggregate root responsible for managing the full lifecycle of an event and its ticket categories.
-
+ 
 **Methods:**
 * `create(props)` — creates a new event with status Draft, raises `EventCreatedEvent`
 * `publish()` — publishes the event, validates via `EventPublishingPolicyService`, raises `EventPublishedEvent`
@@ -359,11 +358,10 @@ The aggregate root responsible for managing the full lifecycle of an event and i
 * `getTicketCategories()` — returns a copy of the ticket category list
 
 **Implemented business rules:** BR1, BR2, BR3, BR4, BR5, BR6, BR7, BR9, BR10, BR11, BR12
-
 ### BookingAggregate (`src/domain/booking/booking.aggregate.ts`)
-
+ 
 The aggregate root responsible for managing ticket bookings, including payment and expiry.
-
+ 
 **Methods:**
 * `create(props)` — creates a new booking with status PendingPayment, raises `TicketReserved`
 * `reconstitute(props)` — reconstructs a booking from persistence without raising domain events
@@ -372,11 +370,10 @@ The aggregate root responsible for managing ticket bookings, including payment a
 * `markAsRefunded()` — changes the booking status to Refunded
 
 **Implemented business rules:** BR15, BR16, BR18, BR19, BR20, BR21, BR22, BR23
-
 ### TicketEntity (`src/domain/ticket/ticket.entity.ts`)
-
+ 
 The entity representing a physical ticket issued after a booking is paid.
-
+ 
 **Methods:**
 * `create(props)` — creates a new ticket with status Active
 * `reconstitute(props)` — reconstructs a ticket from persistence
@@ -385,11 +382,10 @@ The entity representing a physical ticket issued after a booking is paid.
 * `pullDomainEvents()` — retrieves and clears accumulated domain events
 
 **Implemented business rules:** BR25, BR26
-
 ### RefundAggregate (`src/domain/refund/refund.aggregate.ts`)
-
+ 
 The aggregate root responsible for managing the refund process for customers.
-
+ 
 **Methods:**
 * `create(props)` — creates a new refund request with status Requested, raises `RefundRequested`
 * `reconstitute(props)` — reconstructs a refund from persistence
@@ -401,20 +397,19 @@ The aggregate root responsible for managing the refund process for customers.
 
 Implemented Entities
 --------------------
-
+ 
 ### TicketCategory (`src/domain/event/ticket-category.entity.ts`)
-
+ 
 An entity managed within the EventAggregate as part of the `categories` collection.
-
+ 
 **Fields:** `id`, `eventId`, `name`, `price` (Money), `quota`, `remainingQuota`, `salesStart`, `salesEnd`, `isActive`
-
+ 
 **Methods:**
 * `create(props)` — creates a new ticket category with validation for price, quota, and sales period
 * `disable()` — deactivates the ticket category
-
 Implemented Value Objects
 --------------------------
-
+ 
 | Value Object | File | Fields | Validation |
 | :--- | :--- | :--- | :--- |
 | `Money` | `shared/money.vo.ts` | `amount`, `currency` | amount >= 0, currency must not be empty |
@@ -425,44 +420,41 @@ Implemented Value Objects
 | `BookingId` | `booking/value-objects.ts` | `value: string` | must not be empty |
 | `TicketId` | `ticket/value-objects.ts` | `value: string` | must not be empty |
 | `RefundId` | `refund/value-objects.ts` | `value: string` | must not be empty |
-
+ 
 Implemented Domain Services
 ----------------------------
-
+ 
 ### EventPublishingPolicyService (`src/domain/event/event-publishing-policy.service.ts`)
-
+ 
 A domain service that validates whether an event is eligible to be published.
-
+ 
 **Validations:**
 * The event must have at least one active ticket category (BR4)
 * The total quota of all ticket categories must not exceed the event capacity (BR5)
-
 ### RefundEligibilityService (`src/domain/refund-eligibility.service.ts`)
-
+ 
 A domain service that determines whether a booking is eligible for a refund request.
-
+ 
 **Validations:**
 * The booking must have status Paid (BR28)
 * If the event is cancelled, the refund is immediately allowed without further checks (BR29)
 * The request must be submitted before the refund deadline (BR28)
 * None of the tickets from the booking may have already been checked in (BR28)
-
 ### TicketCheckInPolicyService (`src/domain/ticket-check-in-policy.service.ts`)
-
+ 
 A domain service that determines whether a ticket may be checked in by a gate officer.
-
+ 
 **Validations:**
 * The event must not have status Cancelled (US14)
 * The ticket must belong to the same event as the targetEventId (BR25, US14)
 * The ticket must not already have status CheckedIn (BR26, US14)
 * The ticket must have status Active (BR25)
 * The check-in time must fall within the allowed window on the event day (BR25)
-
 Implemented Domain Events
 --------------------------
-
+ 
 All domain events implement the `DomainEvent` interface with fields `eventName` and `occurredAt`.
-
+ 
 | Domain Event | File | Raised By | Triggered When |
 | :--- | :--- | :--- | :--- |
 | `EventCreatedEvent` | `event/event-created.event.ts` | `EventAggregate.create()` | A new event is successfully created |
@@ -478,22 +470,22 @@ All domain events implement the `DomainEvent` interface with fields `eventName` 
 | `RefundApproved` | `refund/events.ts` | `RefundAggregate.approve()` | A refund is approved |
 | `RefundRejected` | `refund/events.ts` | `RefundAggregate.reject()` | A refund is rejected |
 | `RefundPaidOut` | `refund/events.ts` | `RefundAggregate.markAsPaidOut()` | A refund has been paid out |
-
+ 
 Implemented Repository Interfaces
 -----------------------------------
-
+ 
 Repository interfaces are defined in the domain layer and implemented in the infrastructure layer using Prisma.
-
+ 
 ### IEventRepository (`src/domain/event/event.repository.ts`)
-
+ 
 ```typescript
 findById(id: string): Promise<EventAggregate | null>
 findPublished(): Promise<EventAggregate[]>
 save(event: EventAggregate): Promise<void>
 ```
-
+ 
 ### IBookingRepository (`src/domain/booking/booking.repository.ts`)
-
+ 
 ```typescript
 save(booking: BookingAggregate): Promise<void>
 findById(id: string): Promise<BookingAggregate | null>
@@ -502,9 +494,9 @@ findByStatus(status: BookingStatus): Promise<BookingAggregate[]>
 findByEventId(eventId: string): Promise<BookingAggregate[]>
 delete(id: string): Promise<void>
 ```
-
+ 
 ### ITicketRepository (`src/domain/ticket/ticket.repository.ts`)
-
+ 
 ```typescript
 save(ticket: TicketEntity): Promise<void>
 saveMany(tickets: TicketEntity[]): Promise<void>
@@ -513,9 +505,9 @@ findByCode(code: TicketCode): Promise<TicketEntity | null>
 findByBookingId(bookingId: string): Promise<TicketEntity[]>
 findByStatus(status: TicketStatus): Promise<TicketEntity[]>
 ```
-
+ 
 ### IRefundRepository (`src/domain/refund/refund.repository.ts`)
-
+ 
 ```typescript
 save(refund: RefundAggregate): Promise<void>
 findById(id: string): Promise<RefundAggregate | null>
@@ -523,12 +515,12 @@ findByBookingId(bookingId: string): Promise<RefundAggregate | null>
 findByStatus(status: RefundStatus): Promise<RefundAggregate[]>
 findByCustomerId(customerId: string): Promise<RefundAggregate[]>
 ```
-
+ 
 Unit Test Results
 -----------------
-
+ 
 All unit tests are located in `src/domain/domain.spec.ts`. Run them with `npx jest`.
-
+ 
 | # | Test Case | Business Rule | Result |
 | :--- | :--- | :--- | :--- |
 | 1 | Booking cannot be created with zero quantity | BR16 | PASS |
@@ -556,10 +548,10 @@ All unit tests are located in `src/domain/domain.spec.ts`. Run them with `npx je
 | 23 | Rejected refund must have a rejection reason (whitespace only) | BR31 | PASS |
 | 24 | Refund cannot be rejected if status is not Requested | BR30 | PASS |
 | 25 | Refund can be rejected with a valid reason | BR31 | PASS |
-
+ 
 List of Implemented User Stories
 ----------------------------------
-
+ 
 | # | User Story | Domain Layer Status |
 | :--- | :--- | :--- |
 | US1 | Create Event | ✅ EventAggregate.create() |
@@ -582,4 +574,4 @@ List of Implemented User Stories
 | US18 | Mark Refund as Paid Out | ✅ RefundAggregate.markAsPaidOut() |
 | US19 | View Event Sales Report | 🔧 IBookingRepository.findByEventId() (query handler pending) |
 | US20 | View Event Participants | 🔧 IBookingRepository.findByEventId() (query handler pending) |
-
+ 
