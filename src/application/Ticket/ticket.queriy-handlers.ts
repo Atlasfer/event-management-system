@@ -1,8 +1,9 @@
-import { ITicketRepository } from '../../domain/ticket/ticket.repository';
-import { IBookingRepository } from '../../domain/booking/booking.repository';
-import { TicketDto } from '../dto/ticket.dto';
-import { BookingStatus } from '../../domain/booking/value-objects';
-import { GetCustomerTicketsQuery } from './ticket.queries';
+import { ITicketRepository } from '../../domain/ticket/ticket.repository.js';
+import { IBookingRepository } from '../../domain/booking/booking.repository.js';
+import { TicketDto } from '../dto/ticket.dto.js';
+import { BookingStatus } from '../../domain/booking/value-objects.js';
+import { TicketCode } from '../../domain/ticket/value-objects.js';
+import { GetCustomerTicketsQuery, GetTicketByCodeQuery } from './ticket.queries.js';
  
 export class GetCustomerTicketsQueryHandler {
   constructor(
@@ -33,5 +34,25 @@ export class GetCustomerTicketsQueryHandler {
     }
  
     return allTickets;
+  }
+}
+
+export class GetTicketByCodeQueryHandler {
+  constructor(private readonly ticketRepository: ITicketRepository) {}
+
+  async execute(query: GetTicketByCodeQuery): Promise<TicketDto | null> {
+    const ticket = await this.ticketRepository.findByCode(
+      new TicketCode(query.ticketCode),
+    );
+    if (!ticket) return null;
+
+    return {
+      id: ticket.id,
+      bookingId: ticket.bookingId,
+      eventId: ticket.eventId,
+      code: ticket.code.value,
+      status: ticket.status,
+      checkedInAt: ticket.checkedInAt,
+    };
   }
 }

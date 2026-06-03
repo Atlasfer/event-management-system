@@ -94,6 +94,18 @@ export class EventAggregate extends BaseAggregateRoot<string> {
     return newCategory;
   }
 
+  public reserveTicketQuota(categoryId: string, quantity: number): void {
+    const category = this.categories.find((c) => c.id === categoryId);
+    if (!category) throw new DomainError('Ticket category not found.');
+    category.reserveQuota(quantity);
+  }
+
+  public releaseTicketQuota(categoryId: string, quantity: number): void {
+    const category = this.categories.find((c) => c.id === categoryId);
+    if (!category) throw new DomainError('Ticket category not found.');
+    category.releaseQuota(quantity);
+  }
+
   public disableTicketCategory(categoryId: string): void {
     const category = this.categories.find((c) => c.id === categoryId);
 

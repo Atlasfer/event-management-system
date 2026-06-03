@@ -1,13 +1,15 @@
-import { IBookingRepository } from '../../domain/booking/booking.repository';
-import { IEventRepository } from '../../domain/event/event.repository';
-import { ITicketRepository } from '../../domain/ticket/ticket.repository';
-import { BookingAggregate } from '../../domain/booking/booking.aggregate';
-import { BookingStatus } from '../../domain/booking/value-objects';
-import { TicketEntity } from '../../domain/ticket/ticket.entity';
-import { TicketCode } from '../../domain/ticket/value-objects';
-import { Money } from '../../domain/shared/money.vo';
-import { DomainError } from '../../domain/shared/domain-error';
-import { CreateBookingCommand, ExpireBookingCommand, PayBookingCommand } from './booking.commands';
+import { IBookingRepository } from '../../domain/booking/booking.repository.js';
+import { IEventRepository } from '../../domain/event/event.repository.js';
+import { ITicketRepository } from '../../domain/ticket/ticket.repository.js';
+import { BookingAggregate } from '../../domain/booking/booking.aggregate.js';
+import { BookingStatus } from '../../domain/booking/value-objects.js';
+import { TicketEntity } from '../../domain/ticket/ticket.entity.js';
+import { TicketCode } from '../../domain/ticket/value-objects.js';
+import { Money } from '../../domain/shared/money.vo.js';
+import { DomainError } from '../../domain/shared/domain-error.js';
+import { IPaymentGateway } from '../ports/payment-gateway.port.js';
+import { EventStatus } from '../../domain/event/event-status.js';
+import { CreateBookingCommand, ExpireBookingCommand, PayBookingCommand } from './booking.commands.js';
 import { randomUUID } from 'crypto';
 
 export class CreateBookingCommandHandler {
@@ -23,7 +25,6 @@ export class CreateBookingCommandHandler {
       throw new DomainError(`Event not found: ${command.eventId}`);
     }
  
-    const { EventStatus } = await import('../../domain/event/event-status.js');
     if (event.status !== EventStatus.Published) {
       throw new DomainError('Booking can only be created for a Published event.');
     }
@@ -73,7 +74,10 @@ export class CreateBookingCommandHandler {
       quantity: command.quantity,
       unitPrice: category.price,
     });
- 
+
+    event.reserveTicketQuota(command.categoryId, command.quantity);
+
+    await this.eventRepository.save(event);
     await this.bookingRepository.save(booking);
   }
 }
@@ -82,6 +86,7 @@ export class PayBookingCommandHandler {
   constructor(
     private readonly bookingRepository: IBookingRepository,
     private readonly ticketRepository: ITicketRepository,
+    private readonly paymentGateway: IPaymentGateway,
   ) {}
  
   async execute(command: PayBookingCommand): Promise<void> {
@@ -92,10 +97,18 @@ export class PayBookingCommandHandler {
  
     const paymentAmount = Money.create(command.paymentAmount, command.currency);
  
-    // pay() validates BR19 and BR20 internally
+    // Validasi domain dulu (deadline, status, amount)
     booking.pay(paymentAmount);
+
+    // Call payment gateway sesuai requirement case study
+    await this.paymentGateway.processPayment({
+      bookingId: booking.id,
+      customerId: booking.customerId,
+      amount: paymentAmount.amount,
+      currency: paymentAmount.currency,
+    });
  
-    // BR24: Issue tickets with unique codes after payment
+    // Issue tickets with unique codes after payment
     const tickets: TicketEntity[] = [];
     for (let i = 0; i < booking.quantity; i++) {
       const ticket = TicketEntity.create({
@@ -113,7 +126,10 @@ export class PayBookingCommandHandler {
 }
 
 export class ExpireBookingCommandHandler {
-  constructor(private readonly bookingRepository: IBookingRepository) {}
+  constructor(
+    private readonly bookingRepository: IBookingRepository,
+    private readonly eventRepository: IEventRepository,
+  ) {}
  
   async execute(command: ExpireBookingCommand): Promise<void> {
     const booking = await this.bookingRepository.findById(command.bookingId);
@@ -127,8 +143,15 @@ export class ExpireBookingCommandHandler {
       );
     }
  
-    // expire() validates BR21 internally
     booking.expire();
+
+    // Release quota back to ticket category (US11: reserved quota is released on expire)
+    const event = await this.eventRepository.findById(booking.eventId);
+    if (event) {
+      event.releaseTicketQuota(booking.categoryId, booking.quantity);
+      await this.eventRepository.save(event);
+    }
+
     await this.bookingRepository.save(booking);
   }
 }
