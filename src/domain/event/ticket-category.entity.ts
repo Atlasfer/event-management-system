@@ -55,4 +55,18 @@ export class TicketCategory extends Entity<string> {
   public disable(): void {
     this.isActive = false;
   }
+
+  public reserveQuota(quantity: number): void {
+  if (quantity <= 0) {
+    throw new DomainError('Quantity must be greater than zero.');
+  }
+  if (quantity > this.remainingQuota) {
+    throw new DomainError('Not enough remaining quota.');
+  }
+  this.remainingQuota -= quantity;
+}
+
+public releaseQuota(quantity: number): void {
+  this.remainingQuota += quantity;
+}
 }
