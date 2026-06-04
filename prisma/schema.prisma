@@ -50,4 +50,68 @@ model TicketCategory {
   event Event @relation(fields: [eventId], references: [id])
 
   @@index([eventId])
+  @@map("ticket_categories")
 }
+
+model Booking {
+  id         String @id
+  customerId String
+  eventId    String
+  categoryId String
+
+  quantity      Int
+  totalAmount   Decimal
+  totalCurrency String
+
+  status          String
+  paymentDeadline DateTime
+
+  event    Event          @relation(fields: [eventId], references: [id])
+  category TicketCategory @relation(fields: [categoryId], references: [id])
+  tickets  Ticket[]
+  refund   Refund?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@map("bookings")
+}
+
+model Ticket {
+  id          String    @id
+  bookingId   String
+  eventId     String
+  code        String    @unique
+  status      String
+  checkedInAt DateTime?
+
+  booking Booking @relation(fields: [bookingId], references: [id])
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@map("tickets")
+}
+
+model Refund {
+  id        String @id
+  bookingId String @unique
+  customerId String
+
+  amount   Decimal
+  currency String
+
+  status           String
+  reason           String?
+  rejectionReason  String?
+  paymentReference String?
+  requestedAt      DateTime
+
+  booking Booking @relation(fields: [bookingId], references: [id])
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@map("refunds")
+}
+
