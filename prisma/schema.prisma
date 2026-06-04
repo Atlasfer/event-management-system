@@ -4,10 +4,50 @@
 // Get a free hosted Postgres database in seconds: `npx create-db`
 
 generator client {
-  provider = "prisma-client"
+  provider = "prisma-client-js"
   output   = "../generated/prisma"
 }
 
 datasource db {
   provider = "postgresql"
+}
+
+model Event {
+  id           String   @id
+  organizerId  String
+
+  name         String
+  description  String
+  location     String
+
+  startDate    DateTime
+  endDate      DateTime
+
+  maxCapacity  Int
+  status       String
+
+  categories   TicketCategory[]
+}
+
+model TicketCategory {
+  id              String   @id
+
+  eventId         String
+
+  name            String
+
+  priceAmount     Int
+  priceCurrency   String
+
+  quota           Int
+  remainingQuota  Int
+
+  salesStart      DateTime
+  salesEnd        DateTime
+
+  isActive        Boolean
+
+  event Event @relation(fields: [eventId], references: [id])
+
+  @@index([eventId])
 }
