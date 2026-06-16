@@ -1,13 +1,13 @@
-import { PrismaClient } from '@prisma/client';
+import { PrismaService } from '../database/prisma.service';
 import { PrismaTicketRepository } from '../database/repositories/prisma-ticket.repository';
 import { PrismaBookingRepository } from '../database/repositories/prisma-booking.repository';
 import { PrismaEventRepository } from '../database/repositories/prisma-event.repository';
  
-import { CheckInTicketCommandHandler } from '../../application/ticket/ticket.command-handlers';
-import { GetCustomerTicketsQueryHandler } from '../../application/ticket/ticket.query-handlers';
+import { CheckInTicketCommandHandler } from '../../application/Ticket/ticket.command-handlers';
+import { GetCustomerTicketsQueryHandler } from '../../application/Ticket/ticket.query-handlers';
  
-import { CheckInTicketCommand } from '../../application/ticket/ticket.commands';
-import { GetCustomerTicketsQuery } from '../../application/ticket/ticket.queries';
+import { CheckInTicketCommand } from '../../application/Ticket/ticket.commands';
+import { GetCustomerTicketsQuery } from '../../application/Ticket/ticket.queries';
 import { TicketDto } from '../../application/dto/ticket.dto';
  
 export class TicketApplicationService {
@@ -15,7 +15,7 @@ export class TicketApplicationService {
   private readonly bookingRepository: PrismaBookingRepository;
   private readonly eventRepository: PrismaEventRepository;
  
-  constructor(private readonly prisma: PrismaClient) {
+  constructor(private readonly prisma: PrismaService) {
     this.ticketRepository = new PrismaTicketRepository(prisma);
     this.bookingRepository = new PrismaBookingRepository(prisma);
     this.eventRepository = new PrismaEventRepository(prisma);

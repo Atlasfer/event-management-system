@@ -1,4 +1,4 @@
-import { PrismaClient } from '@prisma/client';
+import { PrismaService } from '../database/prisma.service';
 import { PrismaRefundRepository } from '../database/repositories/prisma-refund.repository';
 import { PrismaBookingRepository } from '../database/repositories/prisma-booking.repository';
 import { PrismaTicketRepository } from '../database/repositories/prisma-ticket.repository';
@@ -9,22 +9,22 @@ import {
   MarkRefundAsPaidOutCommandHandler,
   RejectRefundCommandHandler,
   RequestRefundCommandHandler,
-} from '../../application/refund/refund.command-handlers';
+} from '../../application/Refund/refund.command-handlers';
 import {
   GetRefundByBookingQueryHandler,
   GetRefundsByCustomerQueryHandler,
-} from '../../application/refund/refund.query-handlers';
+} from '../../application/Refund/refund.query-handlers';
  
 import {
   ApproveRefundCommand,
   MarkRefundAsPaidOutCommand,
   RejectRefundCommand,
   RequestRefundCommand,
-} from '../../application/refund/refund.commands';
+} from '../../application/Refund/refund.commands';
 import {
   GetRefundByBookingQuery,
   GetRefundsByCustomerQuery,
-} from '../../application/refund/refund.queries';
+} from '../../application/Refund/refund.queries';
 import { RefundDto } from '../../application/dto/refund.dto';
  
 export class RefundApplicationService {
@@ -33,7 +33,7 @@ export class RefundApplicationService {
   private readonly ticketRepository: PrismaTicketRepository;
   private readonly eventRepository: PrismaEventRepository;
  
-  constructor(private readonly prisma: PrismaClient) {
+  constructor(private readonly prisma: PrismaService) {
     this.refundRepository = new PrismaRefundRepository(prisma);
     this.bookingRepository = new PrismaBookingRepository(prisma);
     this.ticketRepository = new PrismaTicketRepository(prisma);

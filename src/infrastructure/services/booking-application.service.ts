@@ -1,4 +1,4 @@
-import { PrismaService } from '../../repositories/database/prisma.service';
+import { PrismaService } from '../database/prisma.service';
 import { PrismaBookingRepository } from '../database/repositories/prisma-booking.repository';
 import { PrismaTicketRepository } from '../database/repositories/prisma-ticket.repository';
 import { PrismaEventRepository } from '../database/repositories/prisma-event.repository';
@@ -9,21 +9,21 @@ import {
   CreateBookingCommandHandler,
   ExpireBookingCommandHandler,
   PayBookingCommandHandler,
-} from '../../application/booking/booking.command.handlers';
+} from '../../application/Booking/booking.command.handlers';
 import {
   GetBookingDetailQueryHandler,
   GetCustomerBookingsQueryHandler,
-} from '../../application/booking/booking.query.handlers';
+} from '../../application/Booking/booking.query.handlers';
  
 import {
   CreateBookingCommand,
   ExpireBookingCommand,
   PayBookingCommand,
-} from '../../application/booking/booking.commands';
+} from '../../application/Booking/booking.commands';
 import {
   GetBookingDetailQuery,
   GetCustomerBookingsQuery,
-} from '../../application/booking/booking.queries';
+} from '../../application/Booking/booking.queries';
 import { BookingDetailDto, BookingDto } from '../../application/dto/booking.dto';
  
 export class BookingApplicationService {
@@ -33,7 +33,7 @@ export class BookingApplicationService {
   private readonly paymentGateway: IPaymentGateway;
  
   constructor(
-    private readonly prisma: PrismaClient,
+    private readonly prisma: PrismaService,
     paymentGateway?: IPaymentGateway,
   ) {
     this.bookingRepository = new PrismaBookingRepository(prisma);

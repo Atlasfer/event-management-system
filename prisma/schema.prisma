@@ -13,41 +13,43 @@ datasource db {
 }
 
 model Event {
-  id           String   @id
-  organizerId  String
+  id          String @id
+  organizerId String
 
-  name         String
-  description  String
-  location     String
+  name        String
+  description String
+  location    String
 
-  startDate    DateTime
-  endDate      DateTime
+  startDate DateTime
+  endDate   DateTime
 
-  maxCapacity  Int
-  status       String
+  maxCapacity Int
+  status      String
 
-  categories   TicketCategory[]
+  categories TicketCategory[]
+  bookings   Booking[]
 }
 
 model TicketCategory {
-  id              String   @id
+  id String @id
 
-  eventId         String
+  eventId String
 
-  name            String
+  name String
 
-  priceAmount     Int
-  priceCurrency   String
+  priceAmount   Int
+  priceCurrency String
 
-  quota           Int
-  remainingQuota  Int
+  quota          Int
+  remainingQuota Int
 
-  salesStart      DateTime
-  salesEnd        DateTime
+  salesStart DateTime
+  salesEnd   DateTime
 
-  isActive        Boolean
+  isActive Boolean
 
-  event Event @relation(fields: [eventId], references: [id])
+  event    Event     @relation(fields: [eventId], references: [id])
+  bookings Booking[]
 
   @@index([eventId])
   @@map("ticket_categories")
@@ -94,8 +96,8 @@ model Ticket {
 }
 
 model Refund {
-  id        String @id
-  bookingId String @unique
+  id         String @id
+  bookingId  String @unique
   customerId String
 
   amount   Decimal
@@ -114,4 +116,3 @@ model Refund {
 
   @@map("refunds")
 }
-
