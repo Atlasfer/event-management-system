@@ -4,10 +4,115 @@
 // Get a free hosted Postgres database in seconds: `npx create-db`
 
 generator client {
-  provider = "prisma-client"
+  provider = "prisma-client-js"
   output   = "../generated/prisma"
 }
 
 datasource db {
   provider = "postgresql"
+}
+
+model Event {
+  id          String @id
+  organizerId String
+
+  name        String
+  description String
+  location    String
+
+  startDate DateTime
+  endDate   DateTime
+
+  maxCapacity Int
+  status      String
+
+  categories TicketCategory[]
+  bookings   Booking[]
+}
+
+model TicketCategory {
+  id String @id
+
+  eventId String
+
+  name String
+
+  priceAmount   Int
+  priceCurrency String
+
+  quota          Int
+  remainingQuota Int
+
+  salesStart DateTime
+  salesEnd   DateTime
+
+  isActive Boolean
+
+  event    Event     @relation(fields: [eventId], references: [id])
+  bookings Booking[]
+
+  @@index([eventId])
+  @@map("ticket_categories")
+}
+
+model Booking {
+  id         String @id
+  customerId String
+  eventId    String
+  categoryId String
+
+  quantity      Int
+  totalAmount   Decimal
+  totalCurrency String
+
+  status          String
+  paymentDeadline DateTime
+
+  event    Event          @relation(fields: [eventId], references: [id])
+  category TicketCategory @relation(fields: [categoryId], references: [id])
+  tickets  Ticket[]
+  refund   Refund?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@map("bookings")
+}
+
+model Ticket {
+  id          String    @id
+  bookingId   String
+  eventId     String
+  code        String    @unique
+  status      String
+  checkedInAt DateTime?
+
+  booking Booking @relation(fields: [bookingId], references: [id])
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@map("tickets")
+}
+
+model Refund {
+  id         String @id
+  bookingId  String @unique
+  customerId String
+
+  amount   Decimal
+  currency String
+
+  status           String
+  reason           String?
+  rejectionReason  String?
+  paymentReference String?
+  requestedAt      DateTime
+
+  booking Booking @relation(fields: [bookingId], references: [id])
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@map("refunds")
 }

@@ -17,6 +17,30 @@ export class TicketCategory extends Entity<string> {
     super(id);
   }
 
+  public static reconstitute(props: {
+    id: string;
+    eventId: string;
+    name: string;
+    price: Money;
+    quota: number;
+    remainingQuota: number;
+    salesStart: Date;
+    salesEnd: Date;
+    isActive: boolean;
+  }): TicketCategory {
+    return new TicketCategory(
+      props.id,
+      props.eventId,
+      props.name,
+      props.price,
+      props.quota,
+      props.remainingQuota,
+      props.salesStart,
+      props.salesEnd,
+      props.isActive,
+    );
+  }
+
   public static create(props: {
     id: string;
     eventId: string;

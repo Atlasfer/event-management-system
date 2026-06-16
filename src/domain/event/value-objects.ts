@@ -13,6 +13,10 @@ export class EventSchedule extends ValueObject<{ start: Date; end: Date }> {
         return new EventSchedule(start, end);
     }
 
+    public static reconstitute(start: Date, end: Date): EventSchedule {
+        return new EventSchedule(start, end);
+    }
+
     public get start(): Date {
         return this.props.start;
     }
@@ -31,6 +35,11 @@ export class EventCapacity extends ValueObject<{ capacity: number }> {
         if (capacity <= 0) {
             throw new DomainError('Event capacity must be greater than zero');
         }
+        return new EventCapacity(capacity);
+    }
+
+    /** Bypass validation — use only when rehydrating from persistence */
+    public static reconstitute(capacity: number): EventCapacity {
         return new EventCapacity(capacity);
     }
 

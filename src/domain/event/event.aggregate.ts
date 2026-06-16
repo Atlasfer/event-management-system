@@ -29,6 +29,32 @@ export class EventAggregate extends BaseAggregateRoot<string> {
     super(id);
   }
 
+  public static reconstitute(props: {
+    id: string;
+    organizerId: string;
+    name: string;
+    description: string;
+    location: string;
+    startDate: Date;
+    endDate: Date;
+    maxCapacity: number;
+    status: EventStatus;
+    categories: TicketCategory[];
+  }): EventAggregate {
+    const event = new EventAggregate(
+      props.id,
+      props.organizerId,
+      props.name,
+      props.description,
+      props.location,
+      EventSchedule.reconstitute(props.startDate, props.endDate),
+      EventCapacity.reconstitute(props.maxCapacity),
+      props.status,
+    );
+    event.categories = [...props.categories];
+    return event;
+  }
+
   public static create(props: {
     id: string;
     organizerId: string;
