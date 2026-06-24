@@ -1,10 +1,11 @@
+import { Injectable } from '@nestjs/common';
 import { PrismaService } from '../database/prisma.service';
 import { PrismaBookingRepository } from '../database/repositories/prisma-booking.repository';
 import { PrismaTicketRepository } from '../database/repositories/prisma-ticket.repository';
 import { PrismaEventRepository } from '../database/repositories/prisma-event.repository';
 import { MockPaymentGateway } from './payment-gateway.service';
-import { IPaymentGateway } from '../../application/ports/payment-gateway.port';
- 
+import type { IPaymentGateway } from '../../application/ports/payment-gateway.port';
+
 import {
   CreateBookingCommandHandler,
   ExpireBookingCommandHandler,
@@ -14,7 +15,7 @@ import {
   GetBookingDetailQueryHandler,
   GetCustomerBookingsQueryHandler,
 } from '../../application/Booking/booking.query.handlers';
- 
+
 import {
   CreateBookingCommand,
   ExpireBookingCommand,
@@ -24,14 +25,18 @@ import {
   GetBookingDetailQuery,
   GetCustomerBookingsQuery,
 } from '../../application/Booking/booking.queries';
-import { BookingDetailDto, BookingDto } from '../../application/dto/booking.dto';
- 
+import {
+  BookingDetailDto,
+  BookingDto,
+} from '../../application/dto/booking.dto';
+
+@Injectable()
 export class BookingApplicationService {
   private readonly bookingRepository: PrismaBookingRepository;
   private readonly ticketRepository: PrismaTicketRepository;
   private readonly eventRepository: PrismaEventRepository;
   private readonly paymentGateway: IPaymentGateway;
- 
+
   constructor(
     private readonly prisma: PrismaService,
     paymentGateway?: IPaymentGateway,
@@ -39,7 +44,7 @@ export class BookingApplicationService {
     this.bookingRepository = new PrismaBookingRepository(prisma);
     this.ticketRepository = new PrismaTicketRepository(prisma);
     this.eventRepository = new PrismaEventRepository(prisma);
-  
+
     this.paymentGateway = paymentGateway ?? new MockPaymentGateway();
   }
 
@@ -50,9 +55,8 @@ export class BookingApplicationService {
     );
     await handler.execute(command);
   }
- 
-  async payBooking(command: PayBookingCommand): Promise<void> {
 
+  async payBooking(command: PayBookingCommand): Promise<void> {
     const handler = new PayBookingCommandHandler(
       this.bookingRepository,
       this.ticketRepository,
@@ -60,7 +64,7 @@ export class BookingApplicationService {
     );
     await handler.execute(command);
   }
- 
+
   async expireBooking(command: ExpireBookingCommand): Promise<void> {
     const handler = new ExpireBookingCommandHandler(
       this.bookingRepository,
@@ -78,7 +82,7 @@ export class BookingApplicationService {
     );
     return handler.execute(query);
   }
- 
+
   async getCustomerBookings(
     query: GetCustomerBookingsQuery,
   ): Promise<BookingDto[]> {

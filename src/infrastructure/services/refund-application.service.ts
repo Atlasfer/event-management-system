@@ -1,9 +1,10 @@
+import { Injectable } from '@nestjs/common';
 import { PrismaService } from '../database/prisma.service';
 import { PrismaRefundRepository } from '../database/repositories/prisma-refund.repository';
 import { PrismaBookingRepository } from '../database/repositories/prisma-booking.repository';
 import { PrismaTicketRepository } from '../database/repositories/prisma-ticket.repository';
 import { PrismaEventRepository } from '../database/repositories/prisma-event.repository';
- 
+
 import {
   ApproveRefundCommandHandler,
   MarkRefundAsPaidOutCommandHandler,
@@ -14,7 +15,7 @@ import {
   GetRefundByBookingQueryHandler,
   GetRefundsByCustomerQueryHandler,
 } from '../../application/Refund/refund.query-handlers';
- 
+
 import {
   ApproveRefundCommand,
   MarkRefundAsPaidOutCommand,
@@ -26,13 +27,14 @@ import {
   GetRefundsByCustomerQuery,
 } from '../../application/Refund/refund.queries';
 import { RefundDto } from '../../application/dto/refund.dto';
- 
+
+@Injectable()
 export class RefundApplicationService {
   private readonly refundRepository: PrismaRefundRepository;
   private readonly bookingRepository: PrismaBookingRepository;
   private readonly ticketRepository: PrismaTicketRepository;
   private readonly eventRepository: PrismaEventRepository;
- 
+
   constructor(private readonly prisma: PrismaService) {
     this.refundRepository = new PrismaRefundRepository(prisma);
     this.bookingRepository = new PrismaBookingRepository(prisma);
@@ -49,7 +51,7 @@ export class RefundApplicationService {
     );
     await handler.execute(command);
   }
- 
+
   async approveRefund(command: ApproveRefundCommand): Promise<void> {
     const handler = new ApproveRefundCommandHandler(
       this.refundRepository,
@@ -58,23 +60,29 @@ export class RefundApplicationService {
     );
     await handler.execute(command);
   }
- 
+
   async rejectRefund(command: RejectRefundCommand): Promise<void> {
     const handler = new RejectRefundCommandHandler(this.refundRepository);
     await handler.execute(command);
   }
- 
+
   async markAsPaidOut(command: MarkRefundAsPaidOutCommand): Promise<void> {
-    const handler = new MarkRefundAsPaidOutCommandHandler(this.refundRepository);
+    const handler = new MarkRefundAsPaidOutCommandHandler(
+      this.refundRepository,
+    );
     await handler.execute(command);
   }
 
-  async getRefundByBooking(query: GetRefundByBookingQuery): Promise<RefundDto | null> {
+  async getRefundByBooking(
+    query: GetRefundByBookingQuery,
+  ): Promise<RefundDto | null> {
     const handler = new GetRefundByBookingQueryHandler(this.refundRepository);
     return handler.execute(query);
   }
- 
-  async getRefundsByCustomer(query: GetRefundsByCustomerQuery): Promise<RefundDto[]> {
+
+  async getRefundsByCustomer(
+    query: GetRefundsByCustomerQuery,
+  ): Promise<RefundDto[]> {
     const handler = new GetRefundsByCustomerQueryHandler(this.refundRepository);
     return handler.execute(query);
   }
