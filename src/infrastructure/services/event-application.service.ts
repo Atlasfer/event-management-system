@@ -1,3 +1,4 @@
+import { Injectable } from '@nestjs/common';
 import { PrismaService } from '../database/prisma.service';
 import { PrismaEventRepository } from '../database/repositories/prisma-event.repository';
 import { PrismaBookingRepository } from '../database/repositories/prisma-booking.repository';
@@ -34,8 +35,12 @@ import {
 } from '../../application/Event/event.queries';
 
 import { EventDto } from '../../application/dto/event.dto';
-import { SalesReportDto, ParticipantDto } from '../../application/dto/report.dto';
+import {
+  SalesReportDto,
+  ParticipantDto,
+} from '../../application/dto/report.dto';
 
+@Injectable()
 export class EventApplicationService {
   private readonly eventRepository: PrismaEventRepository;
   private readonly bookingRepository: PrismaBookingRepository;
@@ -62,13 +67,21 @@ export class EventApplicationService {
     await handler.execute(command);
   }
 
-  async createTicketCategory(command: CreateTicketCategoryCommand): Promise<void> {
-    const handler = new CreateTicketCategoryCommandHandler(this.eventRepository);
+  async createTicketCategory(
+    command: CreateTicketCategoryCommand,
+  ): Promise<void> {
+    const handler = new CreateTicketCategoryCommandHandler(
+      this.eventRepository,
+    );
     await handler.execute(command);
   }
 
-  async disableTicketCategory(command: DisableTicketCategoryCommand): Promise<void> {
-    const handler = new DisableTicketCategoryCommandHandler(this.eventRepository);
+  async disableTicketCategory(
+    command: DisableTicketCategoryCommand,
+  ): Promise<void> {
+    const handler = new DisableTicketCategoryCommandHandler(
+      this.eventRepository,
+    );
     await handler.execute(command);
   }
 
@@ -77,12 +90,16 @@ export class EventApplicationService {
     return handler.execute(query);
   }
 
-  async getPublishedEvents(query: GetPublishedEventsQuery): Promise<EventDto[]> {
+  async getPublishedEvents(
+    query: GetPublishedEventsQuery,
+  ): Promise<EventDto[]> {
     const handler = new GetPublishedEventsQueryHandler(this.eventRepository);
     return handler.execute(query);
   }
 
-  async getEventSalesReport(query: GetEventSalesReportQuery): Promise<SalesReportDto> {
+  async getEventSalesReport(
+    query: GetEventSalesReportQuery,
+  ): Promise<SalesReportDto> {
     const handler = new GetEventSalesReportQueryHandler(
       this.eventRepository,
       this.bookingRepository,
@@ -90,7 +107,9 @@ export class EventApplicationService {
     return handler.execute(query);
   }
 
-  async getEventParticipants(query: GetEventParticipantsQuery): Promise<ParticipantDto[]> {
+  async getEventParticipants(
+    query: GetEventParticipantsQuery,
+  ): Promise<ParticipantDto[]> {
     const handler = new GetEventParticipantsQueryHandler(
       this.eventRepository,
       this.bookingRepository,
